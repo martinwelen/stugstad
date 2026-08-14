@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0ea5a3">
+<title>Stug-städlistan 🏡</title>
+<style>
+  :root{
+    --samuel:#2563eb;
+    --samuel-bg:#dbeafe;
+    --benjamin:#f97316;
+    --benjamin-bg:#ffedd5;
+    --bg1:#fef9c3;
+    --bg2:#bbf7d0;
+    --card:#ffffff;
+    --ink:#1f2937;
+    --muted:#6b7280;
+    --line:#e5e7eb;
+    --ok:#16a34a;
+    --radius:20px;
+    --tap:64px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    background-attachment:fixed;
+    min-height:100vh;
+    padding:0 14px calc(90px + env(safe-area-inset-bottom));
+    -webkit-text-size-adjust:100%;
+  }
+  #confetti{position:fixed;inset:0;pointer-events:none;z-index:9999}
+
+  header{
+    position:sticky;top:0;z-index:50;
+    margin:0 -14px 14px;
+    padding:14px 14px calc(14px);
+    background:linear-gradient(160deg,rgba(255,255,255,.85),rgba(255,255,255,.7));
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(0,0,0,.06);
+  }
+  h1{font-size:1.35rem;margin:0 0 10px;text-align:center;letter-spacing:-.5px}
+  h1 .em{font-size:1.5rem}
+  .scores{display:flex;gap:10px}
+  .score{
+    flex:1;border-radius:16px;padding:10px 12px;color:#fff;
+    box-shadow:0 4px 14px rgba(0,0,0,.12);
+    display:flex;flex-direction:column;gap:2px;
+  }
+  .score.s{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+  .score.b{background:linear-gradient(135deg,#fb923c,#f97316)}
+  .score .name{font-weight:700;font-size:.95rem;opacity:.95}
+  .score .kr{font-weight:800;font-size:1.5rem;line-height:1;font-variant-numeric:tabular-nums}
+  .sync{
+    text-align:center;font-size:.72rem;color:var(--muted);margin-top:8px;
+    min-height:1em;transition:color .2s;
+  }
+  .sync.err{color:#b91c1c}
+  .sync.ok{color:var(--ok)}
+
+  .tasklist{display:flex;flex-direction:column;gap:12px;max-width:560px;margin:0 auto}
+
+  .card{
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:0 3px 12px rgba(0,0,0,.08);
+    overflow:hidden;transition:transform .12s,opacity .2s;
+  }
+  .card.done{opacity:.72}
+  .card:active{transform:scale(.995)}
+  .row{display:flex;align-items:stretch;gap:0;min-height:var(--tap)}
+  .maininfo{flex:1;padding:14px 14px;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0}
+  .tname{font-size:1.02rem;line-height:1.3;font-weight:600}
+  .card.done .tname{text-decoration:line-through;text-decoration-thickness:2px;color:var(--muted)}
+  .tval{font-weight:800;color:#0d9488;font-size:.95rem}
+  .tval .badge{font-weight:700;font-size:.68rem;background:#ccfbf1;color:#0f766e;padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+
+  .checkbtn{
+    flex:0 0 auto;width:74px;border:none;background:#f0fdf4;color:var(--ok);
+    font-size:2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    border-left:1px solid var(--line);
+  }
+  .checkbtn:active{background:#dcfce7}
+
+  /* Who-did-it picker */
+  .picker{display:none;flex-wrap:wrap;gap:10px;padding:0 14px 14px}
+  .card.picking .picker{display:flex}
+  .card.picking .checkbtn{display:none}
+  .picker .q{flex-basis:100%;font-size:.85rem;color:var(--muted);margin-bottom:-2px}
+  .pick{
+    flex:1;min-width:120px;min-height:56px;border:none;border-radius:14px;
+    font-size:1.1rem;font-weight:800;color:#fff;cursor:pointer;
+  }
+  .pick.s{background:var(--samuel)} .pick.b{background:var(--benjamin)}
+  .pick:active{filter:brightness(.92)}
+  .pick.cancel{flex-basis:100%;background:#e5e7eb;color:#374151;min-height:44px;font-size:.9rem;font-weight:600}
+
+  /* Done state */
+  .donefoot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 14px 12px}
+  .whotag{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:.9rem;padding:5px 12px;border-radius:999px}
+  .whotag.s{background:var(--samuel-bg);color:var(--samuel)}
+  .whotag.b{background:var(--benjamin-bg);color:var(--benjamin)}
+  .undo{border:none;background:transparent;color:var(--muted);font-size:.85rem;text-decoration:underline;cursor:pointer;padding:8px}
+
+  /* Multi task */
+  .multi{display:flex;gap:10px;padding:12px 14px 14px}
+  .mbtn{
+    flex:1;min-height:60px;border-radius:14px;border:2px solid;cursor:pointer;
+    font-weight:800;font-size:1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    background:#fff;
+  }
+  .mbtn small{font-weight:600;font-size:.7rem}
+  .mbtn.s{border-color:var(--samuel);color:var(--samuel)}
+  .mbtn.b{border-color:var(--benjamin);color:var(--benjamin)}
+  .mbtn.on.s{background:var(--samuel);color:#fff}
+  .mbtn.on.b{background:var(--benjamin);color:#fff}
+
+  /* Gear / admin */
+  .gearwrap{max-width:560px;margin:26px auto 0;text-align:center}
+  .gear{background:none;border:none;color:var(--muted);opacity:.5;font-size:1.4rem;cursor:pointer;padding:12px}
+  .gear:active{opacity:1}
+
+  /* Modal */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:200}
+  .overlay.show{display:flex}
+  .sheet{
+    background:#fff;width:100%;max-width:560px;border-radius:22px 22px 0 0;
+    padding:20px 18px calc(24px + env(safe-area-inset-bottom));max-height:88vh;overflow:auto;
+    animation:up .22s ease;
+  }
+  @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+  .sheet h2{margin:0 0 14px;font-size:1.2rem;display:flex;align-items:center;justify-content:space-between}
+  .sheet h2 .x{border:none;background:#f3f4f6;border-radius:50%;width:36px;height:36px;font-size:1.1rem;cursor:pointer}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 5px;font-weight:600}
+  input[type=text],input[type=number],input[type=tel]{
+    width:100%;padding:14px;border:2px solid var(--line);border-radius:12px;font-size:1.05rem;font-family:inherit;
+  }
+  input:focus{outline:none;border-color:#0ea5a3}
+  .btn{
+    width:100%;min-height:54px;border:none;border-radius:14px;background:#0ea5a3;color:#fff;
+    font-size:1.05rem;font-weight:800;cursor:pointer;margin-top:14px;
+  }
+  .btn:active{filter:brightness(.93)}
+  .btn.sec{background:#f3f4f6;color:#374151}
+  .pinrow{display:flex;gap:10px;justify-content:center;margin:18px 0}
+  .piperr{color:#b91c1c;text-align:center;font-size:.9rem;min-height:1.2em}
+
+  .adminlist{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .arow{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+  .arow .an{flex:1;font-size:.9rem;line-height:1.25}
+  .arow .av{font-weight:800;color:#0d9488;font-size:.85rem;white-space:nowrap}
+  .arow .astat{font-size:.72rem;color:var(--muted);display:block;margin-top:2px}
+  .mini{border:none;border-radius:10px;padding:8px 10px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mini.reset{background:#fef3c7;color:#92400e}
+  .mini.del{background:#fee2e2;color:#b91c1c}
+  hr{border:none;border-top:1px solid var(--line);margin:18px 0}
+  .hint{font-size:.78rem;color:var(--muted);line-height:1.4}
+</style>
+</head>
+<body>
+<canvas id="confetti"></canvas>
+
+<header>
+  <h1><span class="em">🏡</span> Stug-städlistan</h1>
+  <div class="scores">
+    <div class="score s"><span class="name">Samuel</span><span class="kr" id="sumS">0 kr</span></div>
+    <div class="score b"><span class="name">Benjamin</span><span class="kr" id="sumB">0 kr</span></div>
+  </div>
+  <div class="sync" id="sync">Laddar…</div>
+</header>
+
+<main>
+  <div class="tasklist" id="list"></div>
+  <div class="gearwrap"><button class="gear" id="gear" aria-label="Admin">⚙️</button></div>
+</main>
+
+<!-- Admin overlay -->
+<div class="overlay" id="adminOverlay">
+  <div class="sheet">
+    <h2>🔒 Admin <button class="x" id="adminClose">✕</button></h2>
+
+    <div id="pinView">
+      <p class="hint">Ange 4-siffrig PIN för att öppna admin-läget.</p>
+      <div class="pinrow">
+        <input id="pinInput" type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*"
+               style="width:150px;text-align:center;letter-spacing:.5em;font-size:1.6rem"
+               placeholder="••••">
+      </div>
+      <div class="piperr" id="pinErr"></div>
+      <button class="btn" id="pinGo">Lås upp</button>
+    </div>
+
+    <div id="adminView" style="display:none">
+      <label>Lägg till ny uppgift</label>
+      <input id="newName" type="text" placeholder="T.ex. Kratta löv vid boden">
+      <input id="newVal" type="number" inputmode="numeric" placeholder="Värde i kr" style="margin-top:8px">
+      <button class="btn" id="addTask">➕ Lägg till uppgift</button>
+      <hr>
+      <label>Uppgifter (ta bort / nollställ avbockning)</label>
+      <div class="adminlist" id="adminList"></div>
+      <button class="btn sec" id="adminLogout" style="margin-top:18px">Lås admin</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   KONFIG
+   ============================================================ */
+const BUCKET = "Sr6AEMrFQVo6rRFaXMguZH";
+const KV_URL = "https://kvdb.io/" + BUCKET + "/state";
+const POLL_MS = 5000;
+// SHA-256-hash av admin-PIN (ingen klartext i källkoden):
+const PIN_HASH = "2aec3694418f35d89c5dc2e4372741f0787910ef288d30426e93d9d748f63b85";
+
+/* Startdata – används bara första gången för att "så" den delade staten */
+const DEFAULT_TASKS = [
+  { id:"lok",        namn:"Skörda 5–10 st av de största gula lökarna och ta hem", varde:40 },
+  { id:"godsla",     namn:"Gödsla alla krukor, pallkragar och lådor (EJ gurkorna!) med hönsgödsel före vattning – ca 2/3 lock per pallkrage/stor låda, mindre för krukor", varde:100 },
+  { id:"hortensia",  namn:"Vattna hortensiorna ordentligt (gästtrappan + verandatrappan)", varde:30 },
+  { id:"artor",      namn:"Kolla om det finns ärtor bakom salladen – skörda i så fall", varde:30 },
+  { id:"squash",     namn:"Skörda squashen", varde:25 },
+  { id:"gurkor",     namn:"Ta med gurkorna om möjligt", varde:20 },
+  { id:"kallare",    namn:"Släcka i källaren i gästhuset", varde:10 },
+  { id:"sopor",      namn:"Slänga sopor", varde:25 },
+  { id:"kylskap",    namn:"Gå igenom kylskåpet", varde:50 },
+  { id:"dynor",      namn:"Ta in dynor från farstun", varde:20 },
+  { id:"dammsugare", namn:"Ställa in dammsugaren i städskåpet", varde:10 },
+  { id:"potatis",    namn:"Ställa in potatisskalaren i sitt skåp", varde:10 },
+  { id:"vaska",      namn:"Packa egen väska", varde:15, multi:true },
+];
+
+const KIDS = ["Samuel","Benjamin"];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = null;          // { tasks:[], done:{id:kid}, multiDone:{id:[kids]} }
+let lastServerJSON = "";   // för att upptäcka ändringar vid polling
+let saving = false;        // pausa render från polling under skrivning
+let pickingId = null;      // vilken uppgift som visar "vem gjorde?"
+
+function freshDefaultState(){
+  return { v:2, tasks: JSON.parse(JSON.stringify(DEFAULT_TASKS)), done:{}, multiDone:{} };
+}
+function normalize(s){
+  if(!s || typeof s!=="object") return freshDefaultState();
+  s.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+  s.done = s.done || {};
+  s.multiDone = s.multiDone || {};
+  return s;
+}
+function saveLocal(){ try{ localStorage.setItem("stugstad", JSON.stringify(state)); }catch(e){} }
+function loadLocal(){ try{ const r=localStorage.getItem("stugstad"); return r?normalize(JSON.parse(r)):null; }catch(e){ return null; } }
+
+/* ============================================================
+   NÄTVERK (kvdb.io) med last-write-wins
+   ============================================================ */
+async function kvGet(){
+  const r = await fetch(KV_URL, {cache:"no-store"});
+  if(r.status===404) return null;         // ännu inte sått
+  if(!r.ok) throw new Error("GET "+r.status);
+  const txt = await r.text();
+  return txt ? normalize(JSON.parse(txt)) : null;
+}
+async function kvPut(s){
+  const r = await fetch(KV_URL, {method:"PUT", body:JSON.stringify(s)});
+  if(!r.ok) throw new Error("PUT "+r.status);
+}
+
+/* Kör en mutation mot FÄRSKASTE state och skriv tillbaka */
+async function mutate(fn){
+  saving = true;
+  setSync("Sparar…");
+  try{
+    let base;
+    try{ base = await kvGet(); }catch(e){ base = null; }
+    if(!base) base = state || freshDefaultState();
+    fn(base);
+    state = normalize(base);
+    render();
+    saveLocal();
+    await kvPut(state);
+    lastServerJSON = JSON.stringify(state);
+    setSync("Sparat ✓","ok");
+  }catch(e){
+    saveLocal();
+    setSync("Kunde inte spara – försöker igen…","err");
+  }finally{
+    saving = false;
+  }
+}
+
+async function poll(){
+  if(saving) return;
+  try{
+    let s = await kvGet();
+    if(s===null){                    // tomt: så med startdata
+      await mutate(()=>{});          // mutate på state/default → skriver
+      return;
+    }
+    const j = JSON.stringify(s);
+    if(j!==lastServerJSON){
+      lastServerJSON = j;
+      if(!pickingId){ state = s; saveLocal(); render(); }
+    }
+    setSync("Synkad ✓","ok");
+  }catch(e){
+    setSync("Ingen kontakt – visar sparad lista","err");
+  }
+}
+
+function setSync(msg,cls){
+  const el=document.getElementById("sync");
+  el.textContent=msg;
+  el.className="sync"+(cls?(" "+cls):"");
+}
+
+/* ============================================================
+   BERÄKNINGAR
+   ============================================================ */
+function sums(){
+  const t={Samuel:0,Benjamin:0};
+  for(const task of state.tasks){
+    if(task.multi){
+      const who = state.multiDone[task.id]||[];
+      for(const k of who) if(t[k]!=null) t[k]+=Number(task.varde)||0;
+    }else{
+      const k = state.done[task.id];
+      if(k && t[k]!=null) t[k]+=Number(task.varde)||0;
+    }
+  }
+  return t;
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  if(!state) return;
+  const s=sums();
+  document.getElementById("sumS").textContent=s.Samuel+" kr";
+  document.getElementById("sumB").textContent=s.Benjamin+" kr";
+
+  const list=document.getElementById("list");
+  list.innerHTML="";
+  for(const task of state.tasks){
+    list.appendChild(task.multi ? multiCard(task) : normalCard(task));
+  }
+}
+
+function el(tag,cls,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;return e;}
+
+function valLabel(task){
+  return task.multi
+    ? Number(task.varde)+" kr <span class='badge'>var</span>"
+    : Number(task.varde)+" kr";
+}
+
+function normalCard(task){
+  const who = state.done[task.id];
+  const card = el("div","card"+(who?" done":"")+(pickingId===task.id?" picking":""));
+
+  const row = el("div","row");
+  const info = el("div","maininfo");
+  info.appendChild(el("div","tname",escapeHtml(task.namn)));
+  info.appendChild(el("div","tval",valLabel(task)));
+  row.appendChild(info);
+
+  if(!who){
+    const btn=el("button","checkbtn","○");
+    btn.setAttribute("aria-label","Bocka av");
+    btn.onclick=()=>{ pickingId=task.id; render(); };
+    row.appendChild(btn);
+  }
+  card.appendChild(row);
+
+  if(who){
+    const foot=el("div","donefoot");
+    foot.appendChild(el("span","whotag "+(who==="Samuel"?"s":"b"),"✓ "+who));
+    const undo=el("button","undo","Ångra");
+    undo.onclick=()=>mutate(st=>{ delete st.done[task.id]; });
+    foot.appendChild(undo);
+    card.appendChild(foot);
+  }else if(pickingId===task.id){
+    card.appendChild(picker(task,(kid)=>mutate(st=>{ st.done[task.id]=kid; })));
+  }
+  return card;
+}
+
+function multiCard(task){
+  const who = state.multiDone[task.id]||[];
+  const card = el("div","card");
+  const row = el("div","row");
+  const info = el("div","maininfo");
+  info.appendChild(el("div","tname",escapeHtml(task.namn)));
+  info.appendChild(el("div","tval",valLabel(task)));
+  row.appendChild(info);
+  card.appendChild(row);
+
+  const wrap=el("div","multi");
+  for(const kid of KIDS){
+    const on = who.includes(kid);
+    const b=el("button","mbtn "+(kid==="Samuel"?"s":"b")+(on?" on":""),
+      (on?"✓ ":"")+kid+"<small>"+(on?"klar":"tryck när klar")+"</small>");
+    b.onclick=(ev)=>{
+      const doConfetti = !on;
+      mutate(st=>{
+        const arr=st.multiDone[task.id]||[];
+        if(on){ st.multiDone[task.id]=arr.filter(x=>x!==kid); }
+        else{ if(!arr.includes(kid)) arr.push(kid); st.multiDone[task.id]=arr; }
+      });
+      if(doConfetti) burst(ev);
+    };
+    wrap.appendChild(b);
+  }
+  card.appendChild(wrap);
+  return card;
+}
+
+function picker(task,onPick){
+  const p=el("div","picker");
+  p.appendChild(el("div","q","Vem gjorde detta?"));
+  for(const kid of KIDS){
+    const b=el("button","pick "+(kid==="Samuel"?"s":"b"),kid);
+    b.onclick=(ev)=>{ pickingId=null; onPick(kid); burst(ev); };
+    p.appendChild(b);
+  }
+  const c=el("button","pick cancel","Avbryt");
+  c.onclick=()=>{ pickingId=null; render(); };
+  p.appendChild(c);
+  return p;
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+
+/* ============================================================
+   KONFETTI 🎉
+   ============================================================ */
+const cv=document.getElementById("confetti"), cx=cv.getContext("2d");
+let parts=[], raf=null;
+function sizeCanvas(){ cv.width=innerWidth*devicePixelRatio; cv.height=innerHeight*devicePixelRatio; cx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+addEventListener("resize",sizeCanvas); sizeCanvas();
+const COLORS=["#f97316","#2563eb","#16a34a","#eab308","#ec4899","#14b8a6"];
+function burst(ev){
+  let x=innerWidth/2, y=innerHeight/2;
+  if(ev&&ev.clientX){ x=ev.clientX; y=ev.clientY; }
+  for(let i=0;i<90;i++){
+    const a=Math.random()*Math.PI*2, sp=4+Math.random()*7;
+    parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-4,g:.22+Math.random()*.1,
+      r:4+Math.random()*5,c:COLORS[i%COLORS.length],life:70+Math.random()*30,rot:Math.random()*6,vr:(Math.random()-.5)*.4});
+  }
+  if(!raf) raf=requestAnimationFrame(tick);
+}
+function tick(){
+  cx.clearRect(0,0,cv.width,cv.height);
+  parts=parts.filter(p=>p.life>0);
+  for(const p of parts){
+    p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life--;
+    cx.save(); cx.translate(p.x,p.y); cx.rotate(p.rot); cx.fillStyle=p.c; cx.globalAlpha=Math.max(0,Math.min(1,p.life/25));
+    cx.fillRect(-p.r/2,-p.r/2,p.r,p.r*.6); cx.restore();
+  }
+  if(parts.length) raf=requestAnimationFrame(tick); else raf=null;
+}
+
+/* ============================================================
+   ADMIN
+   ============================================================ */
+const overlay=document.getElementById("adminOverlay");
+function openAdmin(){ overlay.classList.add("show"); showPinView(); }
+function closeAdmin(){ overlay.classList.remove("show"); document.getElementById("pinInput").value=""; document.getElementById("pinErr").textContent=""; }
+function showPinView(){ document.getElementById("pinView").style.display="block"; document.getElementById("adminView").style.display="none"; setTimeout(()=>document.getElementById("pinInput").focus(),100); }
+function showAdminView(){ document.getElementById("pinView").style.display="none"; document.getElementById("adminView").style.display="block"; renderAdminList(); }
+
+async function sha256hex(str){
+  const buf=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function checkPin(){
+  const v=document.getElementById("pinInput").value.trim();
+  const err=document.getElementById("pinErr");
+  if(!/^\d{4}$/.test(v)){ err.textContent="Skriv 4 siffror."; return; }
+  const h=await sha256hex(v);
+  if(h===PIN_HASH){ err.textContent=""; showAdminView(); }
+  else{ err.textContent="Fel PIN, försök igen."; document.getElementById("pinInput").value=""; }
+}
+
+function renderAdminList(){
+  const box=document.getElementById("adminList");
+  box.innerHTML="";
+  for(const task of state.tasks){
+    const row=el("div","arow");
+    let statusTxt="Ej avbockad";
+    let isDone=false;
+    if(task.multi){ const w=state.multiDone[task.id]||[]; if(w.length){statusTxt="Klar: "+w.join(", ");isDone=true;} }
+    else if(state.done[task.id]){ statusTxt="Klar av "+state.done[task.id]; isDone=true; }
+
+    const info=el("div","an", escapeHtml(task.namn)+"<span class='astat'>"+statusTxt+"</span>");
+    row.appendChild(info);
+    row.appendChild(el("div","av",Number(task.varde)+" kr"));
+
+    if(isDone){
+      const rb=el("button","mini reset","Nollställ");
+      rb.onclick=()=>mutate(st=>{ delete st.done[task.id]; delete st.multiDone[task.id]; }).then(renderAdminList);
+      row.appendChild(rb);
+    }
+    const db=el("button","mini del","Ta bort");
+    db.onclick=()=>mutate(st=>{
+      st.tasks=st.tasks.filter(t=>t.id!==task.id);
+      delete st.done[task.id]; delete st.multiDone[task.id];
+    }).then(renderAdminList);
+    row.appendChild(db);
+    box.appendChild(row);
+  }
+}
+
+function addTaskFromForm(){
+  const namn=document.getElementById("newName").value.trim();
+  const varde=parseInt(document.getElementById("newVal").value,10);
+  if(!namn){ alert("Skriv ett namn på uppgiften."); return; }
+  if(!(varde>=0)){ alert("Skriv ett värde i kr."); return; }
+  const id="t"+Date.now().toString(36)+Math.floor(Math.random()*1000);
+  mutate(st=>{ st.tasks.push({id,namn,varde}); }).then(()=>{
+    document.getElementById("newName").value="";
+    document.getElementById("newVal").value="";
+    renderAdminList();
+  });
+}
+
+/* ============================================================
+   EVENTS + START
+   ============================================================ */
+document.getElementById("gear").onclick=openAdmin;
+document.getElementById("adminClose").onclick=closeAdmin;
+overlay.onclick=(e)=>{ if(e.target===overlay) closeAdmin(); };
+document.getElementById("pinGo").onclick=checkPin;
+document.getElementById("pinInput").addEventListener("keydown",e=>{ if(e.key==="Enter") checkPin(); });
+document.getElementById("addTask").onclick=addTaskFromForm;
+document.getElementById("adminLogout").onclick=showPinView;
+
+(function start(){
+  state = loadLocal() || freshDefaultState();
+  render();
+  poll();
+  setInterval(poll, POLL_MS);
+})();
+</script>
+</body>
+</html>
