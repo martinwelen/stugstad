@@ -540,11 +540,23 @@ document.getElementById("pinInput").addEventListener("keydown",e=>{ if(e.key==="
 document.getElementById("addTask").onclick=addTaskFromForm;
 document.getElementById("adminLogout").onclick=showPinView;
 
+// Snåla med anrop: polla bara när fliken är synlig OCH nyss använd.
+const IDLE_MS = 3*60*1000;
+let lastActivity = Date.now();
+function isActive(){ return document.visibilityState==="visible" && (Date.now()-lastActivity) < IDLE_MS; }
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible"){ lastActivity=Date.now(); poll(); } });
+["click","touchstart","keydown"].forEach(ev=>document.addEventListener(ev, ()=>{ lastActivity=Date.now(); }, {passive:true}));
+
+async function pollLoop(){
+  try{ if(isActive()) await poll(); }catch(e){}
+  setTimeout(pollLoop, POLL_MS);
+}
+
 (function start(){
   state = loadLocal() || freshDefaultState();
   render();
   poll();
-  setInterval(poll, POLL_MS);
+  pollLoop();
 })();
 </script>
 </body>
