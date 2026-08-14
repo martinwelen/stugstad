@@ -256,7 +256,7 @@ function saveLocal(){ try{ localStorage.setItem("stugstad", JSON.stringify(state
 function loadLocal(){ try{ const r=localStorage.getItem("stugstad"); return r?normalize(JSON.parse(r)):null; }catch(e){ return null; } }
 
 /* ============================================================
-   NÄTVERK (kvdb.io) med last-write-wins
+   NÄTVERK (Azure Blob) med last-write-wins
    ============================================================ */
 async function kvGet(){
   const r = await fetch(KV_URL, {cache:"no-store"});
